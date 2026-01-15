@@ -2,26 +2,41 @@ package models
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
 type Event struct {
-	ID        string
-	Name      string
-	Location  string
-	Date      time.Time
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	Name      string    `json:"name"`
+	Location  string    `json:"location"`
+	Date      time.Time `json:"date"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type EventPatchDTO struct {
+	Name     *string    `json:"name"`
+	Location *string    `json:"location"`
+	Date     *time.Time `json:"date"`
 }
 
 type EventRepository interface {
 	GetMany(ctx context.Context) ([]*Event, error)
-	GetOne(ctx context.Context, eventId string) (*Event, error)
-	CreateOne(ctx context.Context, event Event) (*Event, error)
+	GetOne(ctx context.Context, eventId uint) (*Event, error)
+	CreateOne(ctx context.Context, event *Event) (*Event, error)
+	UpdateOne(ctx context.Context, eventId uint, event *Event) (*Event, error)
+	DeleteOne(ctx context.Context, eventId uint) error
 }
 
 type EventService interface {
 	GetMany(ctx context.Context) ([]*Event, error)
-	GetOne(ctx context.Context, eventId string) (*Event, error)
-	CreateOne(ctx context.Context, event Event) (*Event, error)
+	GetOne(ctx context.Context, eventId uint) (*Event, error)
+	CreateOne(ctx context.Context, event *Event) (*Event, error)
+	UpdateOne(ctx context.Context, eventId uint, event *Event) (*Event, error)
+	PatchOne(ctx context.Context, eventId uint, patch *EventPatchDTO) (*Event, error)
+	DeleteOne(ctx context.Context, eventId uint) error
 }
+
+var InternalError = errors.New("internal error")
+var ErrRecordNotFound = errors.New("event not found")
