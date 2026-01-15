@@ -38,5 +38,4 @@ type EventService interface {
 	DeleteOne(ctx context.Context, eventId uint) error
 }
 
-var InternalError = errors.New("internal error")
 var ErrRecordNotFound = errors.New("event not found")

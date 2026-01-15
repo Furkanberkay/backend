@@ -2,6 +2,8 @@ package models
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 )
 
@@ -18,9 +20,33 @@ type TicketRepository interface {
 	GetMany(ctx context.Context) ([]*Ticket, error)
 	GetOne(ctx context.Context, ticketID uint) (*Ticket, error)
 	CreateOne(ctx context.Context, ticket *Ticket) (*Ticket, error)
-	UpdateOne(ctx context.Context, ticketID uint, updateData map[string]interface{}) (*Ticket, error)
+	UpdateOne(ctx context.Context, ticketID uint, data *UpdateTicketInput) (*Ticket, error)
+}
+
+type TicketService interface {
+	GetMany(ctx context.Context) ([]*Ticket, error)
+	GetOne(ctx context.Context, ticketID uint) (*Ticket, error)
+	CreateOne(ctx context.Context, ticket *Ticket) (*Ticket, error)
+	UpdateOne(ctx context.Context, ticketID uint, input *UpdateTicketInput) (*Ticket, error)
+	ValidateEntry(ctx context.Context, ticketID uint) (*Ticket, error)
 }
 
 type ValidateTicket struct {
 	TicketId uint `json:"ticket_id"`
 }
+
+type UpdateTicketInput struct {
+	Price      *float64 `json:"price"`
+	SeatNumber *string  `json:"seat_number"`
+	Status     *string  `json:"status"`
+	Entered    *bool    `json:"entered"`
+}
+
+func NewValidationError(msg string) error {
+	return fmt.Errorf("%w: %s", ErrValidation, msg)
+}
+
+var (
+	InternalError = errors.New("internal server error")
+	ErrValidation = errors.New("validation error")
+)
