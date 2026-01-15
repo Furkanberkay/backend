@@ -12,7 +12,7 @@ type TicketRepository struct {
 }
 
 func NewTicketRepository(db *gorm.DB) models.TicketRepository {
-	return TicketRepository{
+	return &TicketRepository{
 		db: db,
 	}
 }
@@ -34,4 +34,24 @@ func (r *TicketRepository) GetOne(ctx context.Context, ticketId uint) (*models.T
 	}
 
 	return ticket, nil
+}
+
+func (r *TicketRepository) CreateOne(ctx context.Context, ticket *models.Ticket) (*models.Ticket, error) {
+	if err := r.db.WithContext(ctx).Model(&models.Ticket{}).Create(ticket).Error; err != nil {
+		return nil, err
+	}
+	return r.GetOne(ctx, ticket.ID)
+}
+
+func (r *TicketRepository) UpdateOne(ctx context.Context, ticketId uint, updateData map[string]interface{}) (*models.Ticket, error) {
+	resp := r.db.WithContext(ctx).Model(&models.Ticket{}).Where("id = ?", ticketId).Updates(updateData)
+	if resp.Error != nil {
+		return nil, resp.Error
+	}
+	if resp.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+
+	return r.GetOne(ctx, ticketId)
+
 }
