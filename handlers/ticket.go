@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"time"
 
+	"github.com/Furkanberkay/ticket-booking-project-v1/httpx"
 	"github.com/Furkanberkay/ticket-booking-project-v1/models"
 	"github.com/gofiber/fiber/v2"
 )
@@ -32,7 +32,7 @@ func (h *TicketHandler) GetMany(c *fiber.Ctx) error {
 
 	tickets, err := h.service.GetMany(ctx)
 	if err != nil {
-		return mapErrorToResponse(c, err)
+		return httpx.MapErrorToResponse(c, err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -55,7 +55,7 @@ func (h *TicketHandler) GetOne(c *fiber.Ctx) error {
 
 	ticket, err := h.service.GetOne(ctx, uint(id))
 	if err != nil {
-		return mapErrorToResponse(c, err)
+		return httpx.MapErrorToResponse(c, err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -78,7 +78,7 @@ func (h *TicketHandler) CreateOne(c *fiber.Ctx) error {
 
 	createdTicket, err := h.service.CreateOne(ctx, ticket)
 	if err != nil {
-		return mapErrorToResponse(c, err)
+		return httpx.MapErrorToResponse(c, err)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
@@ -109,7 +109,7 @@ func (h *TicketHandler) UpdateOne(c *fiber.Ctx) error {
 
 	updatedTicket, err := h.service.UpdateOne(ctx, uint(id), input)
 	if err != nil {
-		return mapErrorToResponse(c, err)
+		return httpx.MapErrorToResponse(c, err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -136,7 +136,7 @@ func (h *TicketHandler) ValidateEntry(c *fiber.Ctx) error {
 
 	ticket, err := h.service.ValidateEntry(ctx, req.TicketID)
 	if err != nil {
-		return mapErrorToResponse(c, err)
+		return httpx.MapErrorToResponse(c, err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -144,25 +144,4 @@ func (h *TicketHandler) ValidateEntry(c *fiber.Ctx) error {
 		"message": "Entry approved. Welcome!",
 		"data":    ticket,
 	})
-}
-
-func mapErrorToResponse(c *fiber.Ctx, err error) error {
-	switch {
-	case errors.Is(err, models.ErrRecordNotFound) || errors.Is(err, models.ErrRecordNotFound):
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"status":  "fail",
-			"message": "Resource not found",
-		})
-	case errors.Is(err, models.ErrValidation):
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "fail",
-			"message": err.Error(),
-		})
-	default:
-
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Internal server error",
-		})
-	}
 }
