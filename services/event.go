@@ -3,17 +3,19 @@ package services
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"time"
 
-	"github.com/Furkanberkay/ticket-booking-project-v1/dto"
 	"github.com/Furkanberkay/ticket-booking-project-v1/models"
 )
 
 type EventService struct {
 	repository models.EventRepository
+	logger     *slog.Logger
 }
 
-func NewEventService(repository models.EventRepository) models.EventService {
-	return &EventService{repository: repository}
+func NewEventService(repository models.EventRepository, logger *slog.Logger) models.EventService {
+	return &EventService{repository: repository, logger: logger}
 }
 
 func (s *EventService) GetMany(ctx context.Context) ([]*models.Event, error) {
@@ -54,31 +56,60 @@ func (s *EventService) UpdateOne(ctx context.Context, eventId uint, event *model
 	return updated, nil
 }
 
-func (s *EventService) PatchOne(ctx context.Context, eventId uint, patch *dto.EventPatchRequest) (*models.Event, error) {
+func (s *EventService) PatchOne(ctx context.Context, eventId uint, input *models.EventUpdateInput) (*models.Event, error) {
 	current, err := s.repository.GetOne(ctx, eventId)
 	if err != nil {
 		if errors.Is(err, models.ErrRecordNotFound) {
 			return nil, models.ErrRecordNotFound
 		}
+		s.logger.ErrorContext(ctx, "patch_event_get_failed", "event_id", eventId, "error", err)
 		return nil, models.InternalError
 	}
 
-	if patch != nil {
-		if patch.Name != nil {
-			current.Name = *patch.Name
+	if input == nil {
+		return current, nil
+	}
+
+	isChanged := false
+
+	if input.Name != nil {
+		if len(*input.Name) < 3 {
+			return nil, models.NewValidationError("event name too short")
 		}
-		if patch.Location != nil {
-			current.Location = *patch.Location
+		if current.Name != *input.Name {
+			current.Name = *input.Name
+			isChanged = true
 		}
-		if patch.Date != nil {
-			current.Date = *patch.Date
+	}
+
+	if input.Location != nil {
+		if current.Location != *input.Location {
+			current.Location = *input.Location
+			isChanged = true
 		}
+	}
+
+	if input.Date != nil {
+		if input.Date.Before(time.Now()) {
+			return nil, models.NewValidationError("event date cannot be in the past")
+		}
+		if !current.Date.Equal(*input.Date) {
+			current.Date = *input.Date
+			isChanged = true
+		}
+	}
+
+	if !isChanged {
+		return current, nil
 	}
 
 	updated, err := s.repository.UpdateOne(ctx, eventId, current)
 	if err != nil {
+		s.logger.ErrorContext(ctx, "patch_event_update_failed", "event_id", eventId, "error", err)
 		return nil, models.InternalError
 	}
+
+	s.logger.InfoContext(ctx, "event_patched_successfully", "event_id", eventId)
 	return updated, nil
 }
 func (s *EventService) DeleteOne(ctx context.Context, eventId uint) error {

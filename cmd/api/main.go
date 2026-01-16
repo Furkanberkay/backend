@@ -31,9 +31,11 @@ func main() {
 
 	eventRepository := repositories.NewEventRepository(dbConn)
 	ticketRepository := repositories.NewTicketRepository(dbConn)
+	authRepository := repositories.NewAuthRepository(db)
 
 	eventService := services.NewEventService(eventRepository)
 	ticketService := services.NewTicketService(ticketRepository, eventRepository, logger)
+	authService := services.NewAuthService(authRepository)
 
 	app := fiber.New()
 	api := app.Group("/api")
@@ -45,6 +47,10 @@ func main() {
 
 	tickets := api.Group("/tickets")
 	handlers.NewTicketHandler(validate, tickets, ticketService)
+
+	auth := api.Group("/auth")
+
+	privateRoute := api.Use(middleware.AuthProtected(db))
 
 	app.Listen(fmt.Sprintf(":") + envConfig.ServerPort)
 }

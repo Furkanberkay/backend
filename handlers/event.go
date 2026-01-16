@@ -157,7 +157,13 @@ func (h *EventHandler) PatchOne(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
 	}
 
-	patchedEvent, err := h.service.PatchOne(ctx, uint(id), input)
+	event := models.EventUpdateInput{
+		Name:     input.Name,
+		Location: input.Location,
+		Date:     input.Date,
+	}
+
+	patchedEvent, err := h.service.PatchOne(ctx, uint(id), &event)
 	if err != nil {
 		return httpx.MapErrorToResponse(c, err)
 	}
