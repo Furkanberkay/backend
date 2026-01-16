@@ -6,16 +6,20 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Furkanberkay/ticket-booking-project-v1/dto"
+	"github.com/Furkanberkay/ticket-booking-project-v1/httpx"
 	"github.com/Furkanberkay/ticket-booking-project-v1/models"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 )
 
 type EventHandler struct {
-	service models.EventService
+	service  models.EventService
+	validate *validator.Validate
 }
 
-func NewEventHandler(router fiber.Router, service models.EventService) *EventHandler {
-	handler := &EventHandler{service: service}
+func NewEventHandler(validate *validator.Validate, router fiber.Router, service models.EventService) *EventHandler {
+	handler := &EventHandler{service: service, validate: validate}
 
 	router.Get("/", handler.GetMany)
 	router.Post("/", handler.CreateOne)
@@ -33,10 +37,7 @@ func (h *EventHandler) GetMany(ctx *fiber.Ctx) error {
 
 	events, err := h.service.GetMany(timeoutCtx)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "fail",
-			"message": models.InternalError.Error(),
-		})
+		httpx.MapErrorToResponse(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -79,112 +80,101 @@ func (h *EventHandler) GetOne(ctx *fiber.Ctx) error {
 	})
 }
 
-func (h *EventHandler) CreateOne(ctx *fiber.Ctx) error {
-	event := new(models.Event)
-	if err := ctx.BodyParser(event); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "fail",
-			"message": err.Error(),
-		})
-	}
-
-	timeoutCtx, cancel := context.WithTimeout(ctx.UserContext(), 5*time.Second)
+func (h *EventHandler) CreateOne(c *fiber.Ctx) error {
+	ctx, cancel := context.WithTimeout(c.UserContext(), 5*time.Second)
 	defer cancel()
 
-	createdEvent, err := h.service.CreateOne(timeoutCtx, event)
-	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+	input := new(dto.CreateEventInput)
+	if err := c.BodyParser(input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid body"})
+	}
+
+	if err := h.validate.Struct(input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "fail",
-			"message": models.InternalError.Error(),
+			"message": "Validation failed",
+			"errors":  err.Error(),
 		})
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"status":  "success",
-		"message": "Event created successfully",
-		"data":    createdEvent,
+	event := &models.Event{
+		Name:     input.Name,
+		Location: input.Location,
+		Date:     input.Date,
+	}
+
+	createdEvent, err := h.service.CreateOne(ctx, event)
+	if err != nil {
+		return httpx.MapErrorToResponse(c, err)
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"status": "success",
+		"data":   createdEvent,
 	})
 }
 
-func (h *EventHandler) UpdateOne(ctx *fiber.Ctx) error {
-	eventId, err := strconv.Atoi(ctx.Params("eventId"))
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "fail",
-			"message": err.Error(),
-		})
-	}
-
-	event := new(models.Event)
-	if err := ctx.BodyParser(event); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "fail",
-			"message": err.Error(),
-		})
-	}
-
-	timeoutCtx, cancel := context.WithTimeout(ctx.UserContext(), 5*time.Second)
+func (h *EventHandler) UpdateOne(c *fiber.Ctx) error {
+	ctx, cancel := context.WithTimeout(c.UserContext(), 5*time.Second)
 	defer cancel()
 
-	updatedEvent, err := h.service.UpdateOne(timeoutCtx, uint(eventId), event)
+	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
-		if errors.Is(err, models.ErrRecordNotFound) {
-			return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"status":  "fail",
-				"message": models.ErrRecordNotFound.Error(),
-			})
-		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "fail",
-			"message": models.InternalError.Error(),
-		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid ID"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status":  "success",
-		"message": "Event updated successfully",
-		"data":    updatedEvent,
+	input := new(dto.UpdateEventInput)
+	if err := c.BodyParser(input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid body"})
+	}
+
+	if err := h.validate.Struct(input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+	}
+
+	event := &models.Event{
+		Name:     input.Name,
+		Location: input.Location,
+		Date:     input.Date,
+	}
+
+	updatedEvent, err := h.service.UpdateOne(ctx, uint(id), event)
+	if err != nil {
+		return httpx.MapErrorToResponse(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status": "success",
+		"data":   updatedEvent,
 	})
 }
 
-func (h *EventHandler) PatchOne(ctx *fiber.Ctx) error {
-	eventId, err := strconv.Atoi(ctx.Params("eventId"))
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "fail",
-			"message": err.Error(),
-		})
-	}
-
-	patch := new(models.EventPatchDTO)
-	if err := ctx.BodyParser(patch); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "fail",
-			"message": err.Error(),
-		})
-	}
-
-	timeoutCtx, cancel := context.WithTimeout(ctx.UserContext(), 5*time.Second)
+func (h *EventHandler) PatchOne(c *fiber.Ctx) error {
+	ctx, cancel := context.WithTimeout(c.UserContext(), 5*time.Second)
 	defer cancel()
 
-	patchedEvent, err := h.service.PatchOne(timeoutCtx, uint(eventId), patch)
+	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
-		if errors.Is(err, models.ErrRecordNotFound) {
-			return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"status":  "fail",
-				"message": models.ErrRecordNotFound.Error(),
-			})
-		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "fail",
-			"message": models.InternalError.Error(),
-		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid ID"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
-		"status":  "success",
-		"message": "Event patched successfully",
-		"data":    patchedEvent,
+	input := new(dto.EventPatchRequest)
+	if err := c.BodyParser(input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid body"})
+	}
+
+	if err := h.validate.Struct(input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+	}
+
+	patchedEvent, err := h.service.PatchOne(ctx, uint(id), input)
+	if err != nil {
+		return httpx.MapErrorToResponse(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status": "success",
+		"data":   patchedEvent,
 	})
 }
 

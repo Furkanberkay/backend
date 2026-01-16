@@ -10,6 +10,7 @@ import (
 	"github.com/Furkanberkay/ticket-booking-project-v1/handlers"
 	"github.com/Furkanberkay/ticket-booking-project-v1/repositories"
 	"github.com/Furkanberkay/ticket-booking-project-v1/services"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/lmittmann/tint"
 )
@@ -37,8 +38,10 @@ func main() {
 	app := fiber.New()
 	api := app.Group("/api")
 
+	validate := validator.New()
+
 	events := api.Group("/events")
-	handlers.NewEventHandler(events, eventService)
+	handlers.NewEventHandler(validate, events, eventService)
 
 	tickets := api.Group("/tickets")
 	handlers.NewTicketHandler(tickets, ticketService)

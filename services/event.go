@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Furkanberkay/ticket-booking-project-v1/dto"
 	"github.com/Furkanberkay/ticket-booking-project-v1/models"
-	"gorm.io/gorm"
 )
 
 type EventService struct {
@@ -27,7 +27,7 @@ func (s *EventService) GetMany(ctx context.Context) ([]*models.Event, error) {
 func (s *EventService) GetOne(ctx context.Context, eventId uint) (*models.Event, error) {
 	event, err := s.repository.GetOne(ctx, eventId)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrRecordNotFound) {
 			return nil, models.ErrRecordNotFound
 		}
 		return nil, models.InternalError
@@ -46,7 +46,7 @@ func (s *EventService) CreateOne(ctx context.Context, event *models.Event) (*mod
 func (s *EventService) UpdateOne(ctx context.Context, eventId uint, event *models.Event) (*models.Event, error) {
 	updated, err := s.repository.UpdateOne(ctx, eventId, event)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrRecordNotFound) {
 			return nil, models.ErrRecordNotFound
 		}
 		return nil, models.InternalError
@@ -54,10 +54,10 @@ func (s *EventService) UpdateOne(ctx context.Context, eventId uint, event *model
 	return updated, nil
 }
 
-func (s *EventService) PatchOne(ctx context.Context, eventId uint, patch *models.EventPatchDTO) (*models.Event, error) {
+func (s *EventService) PatchOne(ctx context.Context, eventId uint, patch *dto.EventPatchRequest) (*models.Event, error) {
 	current, err := s.repository.GetOne(ctx, eventId)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrRecordNotFound) {
 			return nil, models.ErrRecordNotFound
 		}
 		return nil, models.InternalError
@@ -77,18 +77,14 @@ func (s *EventService) PatchOne(ctx context.Context, eventId uint, patch *models
 
 	updated, err := s.repository.UpdateOne(ctx, eventId, current)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, models.ErrRecordNotFound
-		}
 		return nil, models.InternalError
 	}
 	return updated, nil
 }
-
 func (s *EventService) DeleteOne(ctx context.Context, eventId uint) error {
 	err := s.repository.DeleteOne(ctx, eventId)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrRecordNotFound) {
 			return models.ErrRecordNotFound
 		}
 		return models.InternalError
