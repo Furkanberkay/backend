@@ -12,7 +12,7 @@ type EnvConfig struct {
 	DBHost     string `env:"DB_HOST,required"`
 	DBName     string `env:"DB_NAME,required "`
 	DBUser     string `env:"DB_USER,required "`
-	DBPassword string `env:"DB_PASSWORD ,required "`
+	DBPassword string `env:"DB_PASSWORD ,required"`
 	DBSslMode  string `env:"DB_SSLMODE,required"`
 }
 

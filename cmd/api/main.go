@@ -26,14 +26,14 @@ func main() {
 	}))
 	slog.SetDefault(logger)
 
-	envConfig := config.NewEnvConfig()
-	db := db.Init(envConfig, db.DBMigrator)
+	envConfig := config.NewEnvSQLiteConfig()
+	dbConn := db.Init(envConfig, db.DBMigrator)
 
-	eventRepository := repositories.NewEventRepository(db)
-	ticketRepository := repositories.NewTicketRepository(db)
+	eventRepository := repositories.NewEventRepository(dbConn)
+	ticketRepository := repositories.NewTicketRepository(dbConn)
 
 	eventService := services.NewEventService(eventRepository)
-	ticketService := services.NewTicketService(ticketRepository, logger)
+	ticketService := services.NewTicketService(ticketRepository, eventRepository, logger)
 
 	app := fiber.New()
 	api := app.Group("/api")
@@ -44,7 +44,7 @@ func main() {
 	handlers.NewEventHandler(validate, events, eventService)
 
 	tickets := api.Group("/tickets")
-	handlers.NewTicketHandler(tickets, ticketService)
+	handlers.NewTicketHandler(validate, tickets, ticketService)
 
 	app.Listen(fmt.Sprintf(":") + envConfig.ServerPort)
 }

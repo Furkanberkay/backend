@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func Init(cfg *config.EnvConfig, Dbmigrator func(db *gorm.DB) error) *gorm.DB {
+func InitDemo(cfg *config.EnvConfig, Dbmigrator func(db *gorm.DB) error) *gorm.DB {
 	uri := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.ServerPort, cfg.DBSslMode,

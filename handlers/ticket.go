@@ -5,17 +5,20 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Furkanberkay/ticket-booking-project-v1/dto"
 	"github.com/Furkanberkay/ticket-booking-project-v1/httpx"
 	"github.com/Furkanberkay/ticket-booking-project-v1/models"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 )
 
 type TicketHandler struct {
-	service models.TicketService
+	service  models.TicketService
+	validate *validator.Validate
 }
 
-func NewTicketHandler(router fiber.Router, service models.TicketService) {
-	handler := &TicketHandler{service: service}
+func NewTicketHandler(validate *validator.Validate, router fiber.Router, service models.TicketService) {
+	handler := &TicketHandler{service: service, validate: validate}
 
 	router.Get("/", handler.GetMany)
 	router.Post("/", handler.CreateOne)
@@ -68,13 +71,16 @@ func (h *TicketHandler) CreateOne(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.UserContext(), 5*time.Second)
 	defer cancel()
 
-	ticket := new(models.Ticket)
-	if err := c.BodyParser(ticket); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "fail",
-			"message": "Invalid request body",
-		})
+	var input dto.CreateTicketInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid body"})
 	}
+
+	if err := h.validate.Struct(input); err != nil {
+		return httpx.MapErrorToResponse(c, err)
+	}
+	ticket := new(models.Ticket)
+	ticket.EventID = input.EventID
 
 	createdTicket, err := h.service.CreateOne(ctx, ticket)
 	if err != nil {
@@ -122,10 +128,7 @@ func (h *TicketHandler) ValidateEntry(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.UserContext(), 5*time.Second)
 	defer cancel()
 
-	type EntryRequest struct {
-		TicketID uint `json:"ticket_id"`
-	}
-	req := new(EntryRequest)
+	req := new(dto.ValidateTicket)
 
 	if err := c.BodyParser(req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{

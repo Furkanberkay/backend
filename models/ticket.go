@@ -31,10 +31,6 @@ type TicketService interface {
 	ValidateEntry(ctx context.Context, ticketID uint) (*Ticket, error)
 }
 
-type ValidateTicket struct {
-	TicketId uint `json:"ticket_id"`
-}
-
 type UpdateTicketInput struct {
 	Price      *float64 `json:"price"`
 	SeatNumber *string  `json:"seat_number"`
@@ -47,6 +43,8 @@ func NewValidationError(msg string) error {
 }
 
 var (
-	InternalError = errors.New("internal server error")
-	ErrValidation = errors.New("validation error")
+	InternalError        = errors.New("internal server error")
+	ErrValidation        = errors.New("validation error")
+	ErrEventNotFound     = errors.New("event not found")
+	ErrTicketAlreadyUsed = errors.New("ticket already used")
 )

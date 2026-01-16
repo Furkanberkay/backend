@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"time"
 
@@ -23,10 +22,10 @@ func NewEventHandler(validate *validator.Validate, router fiber.Router, service 
 
 	router.Get("/", handler.GetMany)
 	router.Post("/", handler.CreateOne)
-	router.Get("/:eventId", handler.GetOne)
-	router.Put("/:eventId", handler.UpdateOne)
-	router.Patch("/:eventId", handler.PatchOne)
-	router.Delete("/:eventId", handler.DeleteOne)
+	router.Get("/:id", handler.GetOne)
+	router.Put("/:id", handler.UpdateOne)
+	router.Patch("/:id", handler.PatchOne)
+	router.Delete("/:id", handler.DeleteOne)
 
 	return handler
 }
@@ -37,7 +36,7 @@ func (h *EventHandler) GetMany(ctx *fiber.Ctx) error {
 
 	events, err := h.service.GetMany(timeoutCtx)
 	if err != nil {
-		httpx.MapErrorToResponse(ctx, err)
+		return httpx.MapErrorToResponse(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -48,7 +47,7 @@ func (h *EventHandler) GetMany(ctx *fiber.Ctx) error {
 }
 
 func (h *EventHandler) GetOne(ctx *fiber.Ctx) error {
-	eventId, err := strconv.Atoi(ctx.Params("eventId"))
+	eventId, err := strconv.Atoi(ctx.Params("id"))
 	if err != nil || eventId <= 0 {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "fail",
@@ -61,16 +60,7 @@ func (h *EventHandler) GetOne(ctx *fiber.Ctx) error {
 
 	event, err := h.service.GetOne(timeoutCtx, uint(eventId))
 	if err != nil {
-		if errors.Is(err, models.ErrRecordNotFound) {
-			return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"status":  "fail",
-				"message": models.ErrRecordNotFound.Error(),
-			})
-		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "fail",
-			"message": models.InternalError.Error(),
-		})
+		return httpx.MapErrorToResponse(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -179,7 +169,7 @@ func (h *EventHandler) PatchOne(c *fiber.Ctx) error {
 }
 
 func (h *EventHandler) DeleteOne(ctx *fiber.Ctx) error {
-	eventId, err := strconv.Atoi(ctx.Params("eventId"))
+	eventId, err := strconv.Atoi(ctx.Params("id"))
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "fail",
@@ -191,16 +181,7 @@ func (h *EventHandler) DeleteOne(ctx *fiber.Ctx) error {
 	defer cancel()
 
 	if err := h.service.DeleteOne(timeoutCtx, uint(eventId)); err != nil {
-		if errors.Is(err, models.ErrRecordNotFound) {
-			return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"status":  "fail",
-				"message": models.ErrRecordNotFound.Error(),
-			})
-		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "fail",
-			"message": models.InternalError.Error(),
-		})
+		return httpx.MapErrorToResponse(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{

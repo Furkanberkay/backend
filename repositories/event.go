@@ -35,7 +35,7 @@ func (r *EventRepository) GetOne(ctx context.Context, eventId uint) (*models.Eve
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, gorm.ErrRecordNotFound
+			return nil, models.ErrRecordNotFound
 		}
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (r *EventRepository) DeleteOne(ctx context.Context, eventId uint) error {
 		return res.Error
 	}
 	if res.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return models.ErrRecordNotFound
 	}
 	return nil
 }

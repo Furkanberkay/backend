@@ -9,17 +9,19 @@ import (
 )
 
 type TicketService struct {
+	eventRepo  models.EventRepository
 	repository models.TicketRepository
 	logger     *slog.Logger
 }
 
-func NewTicketService(repository models.TicketRepository, logger *slog.Logger) models.TicketService {
+func NewTicketService(repository models.TicketRepository, eventRepo models.EventRepository, logger *slog.Logger) models.TicketService {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	return &TicketService{
 		repository: repository,
 		logger:     logger,
+		eventRepo:  eventRepo,
 	}
 }
 
@@ -48,6 +50,13 @@ func (s *TicketService) GetOne(ctx context.Context, ticketID uint) (*models.Tick
 
 func (s *TicketService) CreateOne(ctx context.Context, ticket *models.Ticket) (*models.Ticket, error) {
 
+	_, err := s.eventRepo.GetOne(ctx, ticket.EventID)
+	if err != nil {
+		if errors.Is(err, models.ErrRecordNotFound) {
+			return nil, models.ErrEventNotFound
+		}
+		return nil, models.InternalError
+	}
 	created, err := s.repository.CreateOne(ctx, ticket)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "ticket_create_failed", "event_id", ticket.EventID, "error", err)
@@ -93,7 +102,7 @@ func (s *TicketService) ValidateEntry(ctx context.Context, ticketID uint) (*mode
 	}
 
 	if ticket.Entered {
-		return nil, models.NewValidationError("ticket already used")
+		return nil, models.ErrTicketAlreadyUsed
 	}
 
 	entered := true
