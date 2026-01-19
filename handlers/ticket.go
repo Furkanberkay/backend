@@ -33,7 +33,12 @@ func (h *TicketHandler) GetMany(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.UserContext(), 5*time.Second)
 	defer cancel()
 
-	tickets, err := h.service.GetMany(ctx)
+	userID, ok := c.Locals("user_id").(uint)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User ID not found"})
+	}
+
+	tickets, err := h.service.GetMany(ctx, userID)
 	if err != nil {
 		return httpx.MapErrorToResponse(c, err)
 	}
@@ -56,20 +61,33 @@ func (h *TicketHandler) GetOne(c *fiber.Ctx) error {
 		})
 	}
 
-	ticket, err := h.service.GetOne(ctx, uint(id))
+	userID, ok := c.Locals("user_id").(uint)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User ID not found"})
+	}
+
+	ticket, qrcode, err := h.service.GetOne(ctx, userID, uint(id))
 	if err != nil {
 		return httpx.MapErrorToResponse(c, err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status": "success",
-		"data":   ticket,
+		"data": fiber.Map{
+			"ticket": ticket,
+			"qrcode": qrcode,
+		},
 	})
 }
 
 func (h *TicketHandler) CreateOne(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.UserContext(), 5*time.Second)
 	defer cancel()
+
+	userID, ok := c.Locals("user_id").(uint)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User ID not found"})
+	}
 
 	var input dto.CreateTicketInput
 	if err := c.BodyParser(&input); err != nil {
@@ -82,7 +100,7 @@ func (h *TicketHandler) CreateOne(c *fiber.Ctx) error {
 	ticket := new(models.Ticket)
 	ticket.EventID = input.EventID
 
-	createdTicket, err := h.service.CreateOne(ctx, ticket)
+	createdTicket, err := h.service.CreateOne(ctx, userID, ticket)
 	if err != nil {
 		return httpx.MapErrorToResponse(c, err)
 	}
@@ -96,6 +114,11 @@ func (h *TicketHandler) CreateOne(c *fiber.Ctx) error {
 func (h *TicketHandler) UpdateOne(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.UserContext(), 5*time.Second)
 	defer cancel()
+
+	userID, ok := c.Locals("user_id").(uint)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User ID not found"})
+	}
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -113,7 +136,7 @@ func (h *TicketHandler) UpdateOne(c *fiber.Ctx) error {
 		})
 	}
 
-	updatedTicket, err := h.service.UpdateOne(ctx, uint(id), input)
+	updatedTicket, err := h.service.UpdateOne(ctx, userID, uint(id), input)
 	if err != nil {
 		return httpx.MapErrorToResponse(c, err)
 	}
@@ -128,7 +151,12 @@ func (h *TicketHandler) ValidateEntry(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(c.UserContext(), 5*time.Second)
 	defer cancel()
 
-	req := new(dto.ValidateTicket)
+	userID, ok := c.Locals("user_id").(uint)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User ID not found"})
+	}
+
+	req := new(models.ValidateTicket)
 
 	if err := c.BodyParser(req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -137,7 +165,7 @@ func (h *TicketHandler) ValidateEntry(c *fiber.Ctx) error {
 		})
 	}
 
-	ticket, err := h.service.ValidateEntry(ctx, req.TicketID)
+	ticket, err := h.service.ValidateEntry(ctx, userID, req.TicketID)
 	if err != nil {
 		return httpx.MapErrorToResponse(c, err)
 	}

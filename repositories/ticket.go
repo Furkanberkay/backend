@@ -19,11 +19,13 @@ func NewTicketRepository(db *gorm.DB) models.TicketRepository {
 	}
 }
 
-func (r *TicketRepository) GetMany(ctx context.Context) ([]*models.Ticket, error) {
+func (r *TicketRepository) GetMany(ctx context.Context, userId uint) ([]*models.Ticket, error) {
 	var tickets []*models.Ticket
+
 	err := r.db.WithContext(ctx).
 		Model(&models.Ticket{}).
 		Preload("Event").
+		Where("user_id = ?", userId).
 		Order("updated_at DESC").
 		Find(&tickets).Error
 
@@ -33,12 +35,13 @@ func (r *TicketRepository) GetMany(ctx context.Context) ([]*models.Ticket, error
 	return tickets, nil
 }
 
-func (r *TicketRepository) GetOne(ctx context.Context, ticketId uint) (*models.Ticket, error) {
+func (r *TicketRepository) GetOne(ctx context.Context, userId uint, ticketId uint) (*models.Ticket, error) {
 	ticket := new(models.Ticket)
+
 	err := r.db.WithContext(ctx).
 		Model(&models.Ticket{}).
 		Preload("Event").
-		Where("id = ?", ticketId).
+		Where("id = ? AND user_id = ?", ticketId, userId).
 		First(ticket).Error
 
 	if err != nil {
@@ -51,7 +54,9 @@ func (r *TicketRepository) GetOne(ctx context.Context, ticketId uint) (*models.T
 	return ticket, nil
 }
 
-func (r *TicketRepository) CreateOne(ctx context.Context, ticket *models.Ticket) (*models.Ticket, error) {
+func (r *TicketRepository) CreateOne(ctx context.Context, userId uint, ticket *models.Ticket) (*models.Ticket, error) {
+	ticket.UserID = userId
+
 	err := r.db.WithContext(ctx).Create(ticket).Error
 	if err != nil {
 		return nil, err
@@ -59,20 +64,20 @@ func (r *TicketRepository) CreateOne(ctx context.Context, ticket *models.Ticket)
 	return ticket, nil
 }
 
-func (r *TicketRepository) UpdateOne(ctx context.Context, ticketId uint, data *models.UpdateTicketInput) (*models.Ticket, error) {
+func (r *TicketRepository) UpdateOne(ctx context.Context, userId uint, ticketId uint, data *models.UpdateTicketInput) (*models.Ticket, error) {
 	var ticket models.Ticket
-	ticket.ID = ticketId
 
-	err := r.db.WithContext(ctx).
+	result := r.db.WithContext(ctx).
 		Model(&ticket).
 		Clauses(clause.Returning{}).
-		Updates(data).Error
+		Where("id = ? AND user_id = ?", ticketId, userId).
+		Updates(data)
 
-	if err != nil {
-		return nil, err
+	if result.Error != nil {
+		return nil, result.Error
 	}
 
-	if ticket.ID == 0 {
+	if result.RowsAffected == 0 {
 		return nil, models.ErrRecordNotFound
 	}
 
