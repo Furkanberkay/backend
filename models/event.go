@@ -7,12 +7,14 @@ import (
 )
 
 type Event struct {
-	ID        uint      `json:"id" gorm:"primaryKey"`
-	Name      string    `json:"name"`
-	Location  string    `json:"location"`
-	Date      time.Time `json:"date"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID                    uint      `json:"id" gorm:"primaryKey"`
+	Name                  string    `json:"name"`
+	Location              string    `json:"location"`
+	Date                  time.Time `json:"date"`
+	TotalTicketsPurchased int64     `json:"totalTicketsPurchased" gorm:"-"`
+	TotalTicketsEntered   int64     `json:"totalTicketsEntered" gorm:"-"`
+	CreatedAt             time.Time `json:"createdAt"`
+	UpdatedAt             time.Time `json:"updatedAt"`
 }
 
 type EventUpdateInput struct {

@@ -19,9 +19,17 @@ func NewEventRepository(db *gorm.DB) models.EventRepository {
 func (r *EventRepository) GetMany(ctx context.Context) ([]*models.Event, error) {
 	events := []*models.Event{}
 
-	res := r.db.WithContext(ctx).Model(&models.Event{}).Find(&events)
-	if res.Error != nil {
-		return nil, res.Error
+	err := r.db.WithContext(ctx).
+		Table("events").
+		Select("events.*, " +
+			"COUNT(tickets.id) as total_tickets_purchased, " +
+			"SUM(CASE WHEN tickets.entered = true THEN 1 ELSE 0 END) as total_tickets_entered").
+		Joins("LEFT JOIN tickets ON tickets.event_id = events.id").
+		Group("events.id").
+		Scan(&events).Error
+
+	if err != nil {
+		return nil, err
 	}
 	return events, nil
 }
@@ -30,14 +38,21 @@ func (r *EventRepository) GetOne(ctx context.Context, eventId uint) (*models.Eve
 	event := &models.Event{}
 
 	err := r.db.WithContext(ctx).
-		First(event, eventId).
-		Error
+		Table("events").
+		Select("events.*, "+
+			"COUNT(tickets.id) as total_tickets_purchased, "+
+			"SUM(CASE WHEN tickets.entered = true THEN 1 ELSE 0 END) as total_tickets_entered").
+		Joins("LEFT JOIN tickets ON tickets.event_id = events.id").
+		Where("events.id = ?", eventId).
+		Group("events.id").
+		Scan(event).Error
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, models.ErrRecordNotFound
-		}
 		return nil, err
+	}
+
+	if event.ID == 0 {
+		return nil, models.ErrRecordNotFound
 	}
 
 	return event, nil
@@ -53,6 +68,9 @@ func (r *EventRepository) CreateOne(ctx context.Context, event *models.Event) (*
 func (r *EventRepository) UpdateOne(ctx context.Context, eventId uint, event *models.Event) (*models.Event, error) {
 	existing := &models.Event{}
 	if err := r.db.WithContext(ctx).First(existing, eventId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, models.ErrRecordNotFound
+		}
 		return nil, err
 	}
 
