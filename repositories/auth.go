@@ -9,22 +9,22 @@ import (
 	"gorm.io/gorm"
 )
 
-type AuthRepository struct {
+type UserRepository struct {
 	db     *gorm.DB
 	logger *slog.Logger
 }
 
-func NewAuthRepository(db *gorm.DB, logger *slog.Logger) models.AuthRepository {
+func NewUserRepository(db *gorm.DB, logger *slog.Logger) models.AuthRepository {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &AuthRepository{
+	return &UserRepository{
 		db:     db,
 		logger: logger,
 	}
 }
 
-func (r *AuthRepository) RegisterUser(ctx context.Context, user *models.User) (*models.User, error) {
+func (r *UserRepository) RegisterUser(ctx context.Context, user *models.User) (*models.User, error) {
 	err := r.db.WithContext(ctx).Create(user).Error
 	if err != nil {
 		r.logger.ErrorContext(ctx, "auth_repo_register_user_failed",
@@ -37,7 +37,7 @@ func (r *AuthRepository) RegisterUser(ctx context.Context, user *models.User) (*
 	return user, nil
 }
 
-func (r *AuthRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	user := new(models.User)
 
 	err := r.db.WithContext(ctx).Where("email = ?", email).First(user).Error
@@ -54,7 +54,7 @@ func (r *AuthRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 	return user, nil
 }
 
-func (r *AuthRepository) GetUserByUserID(ctx context.Context, userID uint) (*models.User, error) {
+func (r *UserRepository) GetUserByUserID(ctx context.Context, userID uint) (*models.User, error) {
 	user := new(models.User)
 
 	err := r.db.WithContext(ctx).First(user, userID).Error

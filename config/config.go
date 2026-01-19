@@ -9,23 +9,26 @@ import (
 
 type EnvConfig struct {
 	ServerPort string `env:"SERVER_PORT,required"`
-	DBHost     string `env:"DB_HOST,required"`
-	DBName     string `env:"DB_NAME,required "`
-	DBUser     string `env:"DB_USER,required "`
-	DBPassword string `env:"DB_PASSWORD ,required"`
-	DBSslMode  string `env:"DB_SSLMODE,required"`
+	JWTSecret  string `env:"SECRET_KEY,required"`
+	DBDriver   string `env:"DB_DRIVER,required"`
+
+	DBHost     string `env:"DB_HOST"`
+	DBName     string `env:"DB_NAME"`
+	DBUser     string `env:"DB_USER"`
+	DBPassword string `env:"DB_PASSWORD"`
+	DBPort     string `env:"DB_PORT"`
+	DBSslMode  string `env:"DB_SSLMODE"`
+
+	SQLitePath string `env:"SQLITE_PATH"`
 }
 
 func NewEnvConfig() *EnvConfig {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("unable to load the .env", err.Error())
-	}
+	_ = godotenv.Load()
 
 	config := EnvConfig{}
 
 	if err := env.Parse(&config); err != nil {
-		log.Fatalf("Unable to load veriables from the .env %e", err)
+		log.Fatalf("Config yüklenemedi: %v", err)
 	}
 
 	return &config

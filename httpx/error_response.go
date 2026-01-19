@@ -32,6 +32,11 @@ func MapErrorToResponse(c *fiber.Ctx, err error) error {
 			"status":  "fail",
 			"message": err.Error(),
 		})
+	case errors.Is(err, models.ErrUserAlreadyExist):
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "fail",
+			"message": err.Error(),
+		})
 
 	default:
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

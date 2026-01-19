@@ -14,7 +14,7 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func Init(cfg *config.EnvSQLiteConfig, migrator func(db *gorm.DB) error) *gorm.DB {
+func Init(cfg *config.EnvConfig, migrator func(db *gorm.DB) error) *gorm.DB {
 
 	driver := strings.ToLower(strings.TrimSpace(cfg.DBDriver))
 
@@ -25,10 +25,15 @@ func Init(cfg *config.EnvSQLiteConfig, migrator func(db *gorm.DB) error) *gorm.D
 
 	switch driver {
 	case "sqlite":
-		if dir := filepath.Dir(cfg.SQLitePath); dir != "." {
+		dbPath := cfg.SQLitePath
+		if dbPath == "" {
+			dbPath = "data/ticket_booking.db"
+		}
+
+		if dir := filepath.Dir(dbPath); dir != "." {
 			_ = os.MkdirAll(dir, 0755)
 		}
-		dbConn, err = gorm.Open(sqlite.Open(cfg.SQLitePath), &gorm.Config{
+		dbConn, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{
 			Logger: logger.Default.LogMode(logger.Info),
 		})
 
@@ -42,17 +47,17 @@ func Init(cfg *config.EnvSQLiteConfig, migrator func(db *gorm.DB) error) *gorm.D
 		})
 
 	default:
-		log.Fatalf("unknown DB_DRIVER: %s (use sqlite or postgres)", cfg.DBDriver)
+		log.Fatalf("Bilinmeyen DB_DRIVER: %s (sqlite veya postgres kullanın)", cfg.DBDriver)
 	}
 
 	if err != nil {
-		log.Fatalf("Unable to connect to the database: %v", err)
+		log.Fatalf("Veritabanına bağlanılamadı: %v", err)
 	}
 
 	if err := migrator(dbConn); err != nil {
-		log.Fatalf("Unable to migrate to the database: %v", err)
+		log.Fatalf("Migration hatası: %v", err)
 	}
 
-	log.Printf("connected to the database (%s)", driver)
+	log.Printf("Veritabanına bağlanıldı (%s)", driver)
 	return dbConn
 }
